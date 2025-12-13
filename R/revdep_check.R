@@ -6,8 +6,9 @@
 #' `rcmdcheck()` on one selected package. Returns raw results and a compact
 #' summary; results are saved to `check_dir`.
 #'
-#' @param target_package Character; package whose reverse dependencies to query
-#'   (e.g., "did"). If the current directory is that package, it is (re)installed
+#' @param target_package Optional character; package whose reverse dependencies to query
+#'   (e.g., "did"). Defaults to the package in the current directory.
+#'   If the current directory is that package, it is (re)installed
 #'   locally first to avoid using an outdated version.
 #' @param reverse_deps Optional character vector of CRAN package names to
 #'   check. When `NULL`, reverse dependencies are discovered automatically via CRAN metadata.
@@ -19,14 +20,25 @@
 #' @return A list with elements `results` (raw `rcmdcheck` output), `summary`
 #'   (data frame), and `check_dir`.
 #' @export
-simple_revdep_check <- function(target_package,
+simple_revdep_check <- function(target_package = NULL,
                                 reverse_deps = NULL,
                                 check_dir = ".simple_revdep",
                                 check_args = c("--no-manual", "--as-cran"),
                                 build_args = "--no-build-vignettes",
                                 quiet = TRUE) {
-    if (missing(target_package) || is.null(target_package) || !nzchar(target_package)) {
-        stop("Please provide `target_package` (e.g., \"did\").")
+    if (is.null(target_package)) {
+        desc_path <- file.path(getwd(), "DESCRIPTION")
+        if (!file.exists(desc_path)) {
+            stop("No DESCRIPTION found in the current directory")
+        }
+        dcf <- tryCatch(read.dcf(desc_path), error = function(e) NULL)
+        if (is.null(dcf)) {
+            stop("Failed to read DESCRIPTION file")
+        }
+        target_package <- dcf[1, "Package"]
+        if (is.na(target_package) || !nzchar(target_package)) {
+            stop("DESCRIPTION is missing a Package field")
+        }
     }
 
     # Install the local package only if it matches target_package
@@ -75,7 +87,7 @@ get_reverse_dependencies <- function(target_package = NULL) {
     }
 
     # Query CRAN metadata for reverse dependencies
-    rev <- tools::package_dependencies(packages = pkg, reverse = TRUE, repositories = getOption("repos"))
+    rev <- tools::package_dependencies(packages = pkg, reverse = TRUE)
     unique(unname(rev[[pkg]] %||% character()))
 }
 
