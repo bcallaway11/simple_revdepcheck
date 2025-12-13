@@ -1,3 +1,57 @@
+print_detailed_results <- function(results) {
+    message("\n", strrep("=", 70))
+    message("=== Detailed Results by Package ===")
+    message(strrep("=", 70))
+
+    for (pkg_name in names(results)) {
+        result <- results[[pkg_name]]
+
+        message("\n", strrep("-", 70))
+        message("Package: ", pkg_name)
+        message(strrep("-", 70))
+
+        if (isTRUE(result$crashed)) {
+            message("  ❌ CHECK CRASHED")
+            message("  Error: ", result$errors)
+        } else {
+            status <- revdep_status(result)
+            status_icon <- switch(status,
+                CRASH = "❌",
+                FAIL = "❌",
+                WARN = "⚠️ ",
+                NOTE = "📝",
+                PASS = "✅",
+                "  "
+            )
+            message("  Status: ", status_icon, " ", status)
+            message("  Errors: ", length(result$errors))
+            message("  Warnings: ", length(result$warnings))
+            message("  Notes: ", length(result$notes))
+
+            if (length(result$errors) > 0) {
+                message("\n  ERRORS:")
+                for (err in result$errors) {
+                    message("    • ", err)
+                }
+            }
+            if (length(result$warnings) > 0) {
+                message("\n  WARNINGS:")
+                for (warn in result$warnings) {
+                    message("    • ", warn)
+                }
+            }
+            if (length(result$notes) > 0) {
+                message("\n  NOTES:")
+                for (note in result$notes) {
+                    message("    • ", note)
+                }
+            }
+        }
+    }
+
+    message("\n", strrep("=", 70))
+}
+
 #' Run a simple reverse dependency check
 #'
 #' Installs the local package (from the current directory) to ensure the latest
@@ -104,8 +158,11 @@ simple_revdep_check <- function(target_package = NULL,
     names(results) <- vapply(results, function(r) r$package, character(1L))
     summary <- revdep_status_table(results)
 
-    message("\n=== Summary ===")
+    message("\n=== Summary Table ===")
     print(summary)
+
+    # Print detailed results
+    print_detailed_results(results)
 
     saveRDS(results, file.path(check_dir, "check_results.rds"))
     message("\nResults saved to: ", file.path(check_dir, "check_results.rds"))
@@ -134,6 +191,42 @@ get_reverse_dependencies <- function(target_package = NULL) {
     # Get all types: Depends, Imports, Suggests, LinkingTo
     rev <- tools::package_dependencies(packages = pkg, which = c("Depends", "Imports", "Suggests", "LinkingTo"), reverse = TRUE)
     unique(unname(rev[[pkg]] %||% character()))
+}
+
+#' Print saved reverse dependency check results
+#'
+#' Load and display previously saved reverse dependency check results from an RDS file.
+#'
+#' @param check_dir Directory containing the saved results, or direct path to check_results.rds file.
+#'   Defaults to ".simple_revdep".
+#'
+#' @return Invisibly returns the list of results.
+#' @export
+print_revdep_results <- function(check_dir = ".simple_revdep") {
+    # Determine the RDS file path
+    if (grepl("\\.rds$", check_dir, ignore.case = TRUE)) {
+        rds_path <- check_dir
+    } else {
+        rds_path <- file.path(check_dir, "check_results.rds")
+    }
+
+    if (!file.exists(rds_path)) {
+        stop("Results file not found: ", rds_path)
+    }
+
+    message("Loading results from: ", rds_path)
+    results <- readRDS(rds_path)
+
+    # Generate and print summary
+    summary <- revdep_status_table(results)
+
+    message("\n=== Summary Table ===")
+    print(summary)
+
+    # Print detailed results
+    print_detailed_results(results)
+
+    invisible(results)
 }
 
 #' Summarize reverse dependency check results
