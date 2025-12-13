@@ -5,23 +5,28 @@
 \title{Run a simple reverse dependency check}
 \usage{
 simple_revdep_check(
-  target_package,
+  target_package = NULL,
   reverse_deps = NULL,
   check_dir = ".simple_revdep",
+  num_cores = 1L,
   check_args = c("--no-manual", "--as-cran"),
   build_args = "--no-build-vignettes",
   quiet = TRUE
 )
 }
 \arguments{
-\item{target_package}{Character; package whose reverse dependencies to query
-(e.g., "did"). If the current directory is that package, it is (re)installed
+\item{target_package}{Optional character; package whose reverse dependencies to query
+(e.g., "did"). Defaults to the package in the current directory.
+If the current directory is that package, it is (re)installed
 locally first to avoid using an outdated version.}
 
 \item{reverse_deps}{Optional character vector of CRAN package names to
 check. When \code{NULL}, reverse dependencies are discovered automatically via CRAN metadata.}
 
 \item{check_dir}{Directory to store downloaded tarballs and saved results.}
+
+\item{num_cores}{Number of cores to use for parallel checking. Defaults to 1 (sequential).
+Works on both Linux and Windows.}
 
 \item{check_args}{Arguments forwarded to \verb{R CMD check}.}
 
