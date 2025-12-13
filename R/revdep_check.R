@@ -132,7 +132,7 @@ get_reverse_dependencies <- function(target_package = NULL) {
 
     # Query CRAN metadata for reverse dependencies
     # Get all types: Depends, Imports, Suggests, LinkingTo
-    rev <- tools::package_dependencies(packages = pkg, reverse = c("Depends", "Imports", "Suggests", "LinkingTo"))
+    rev <- tools::package_dependencies(packages = pkg, which = c("Depends", "Imports", "Suggests", "LinkingTo"), reverse = TRUE)
     unique(unname(rev[[pkg]] %||% character()))
 }
 
