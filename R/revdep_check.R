@@ -308,7 +308,8 @@ check_tarball <- function(path, check_args, build_args, quiet) {
             path,
             args = check_args,
             build_args = build_args,
-            quiet = quiet
+            quiet = quiet,
+            env = c("_R_CHECK_FORCE_SUGGESTS_" = "false")
         ),
         error = function(e) {
             list(
