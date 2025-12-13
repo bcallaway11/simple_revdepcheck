@@ -13,6 +13,8 @@
 #' @param reverse_deps Optional character vector of CRAN package names to
 #'   check. When `NULL`, reverse dependencies are discovered automatically via CRAN metadata.
 #' @param check_dir Directory to store downloaded tarballs and saved results.
+#' @param num_cores Number of cores to use for parallel checking. Defaults to 1 (sequential).
+#'   Works on both Linux and Windows.
 #' @param check_args Arguments forwarded to `R CMD check`.
 #' @param build_args Arguments forwarded to `R CMD build`.
 #' @param quiet Logical; passed to `rcmdcheck()`.
@@ -23,6 +25,7 @@
 simple_revdep_check <- function(target_package = NULL,
                                 reverse_deps = NULL,
                                 check_dir = ".simple_revdep",
+                                num_cores = 1L,
                                 check_args = c("--no-manual", "--as-cran"),
                                 build_args = "--no-build-vignettes",
                                 quiet = TRUE) {
@@ -41,18 +44,29 @@ simple_revdep_check <- function(target_package = NULL,
         }
     }
 
+    message("\n=== Simple Reverse Dependency Check ===")
+    message("Target package: ", target_package)
+
     # Install the local package only if it matches target_package
+    message("\nChecking local package installation...")
     install_current_package_if_target(target_package)
 
     # Determine reverse dependencies (from CRAN metadata)
+    message("\nDiscovering reverse dependencies...")
     if (is.null(reverse_deps)) {
         reverse_deps <- get_reverse_dependencies(target_package = target_package)
     }
     if (length(reverse_deps) == 0) {
         stop("No reverse dependencies to check for target package: ", target_package)
     }
+    message("Found ", length(reverse_deps), " reverse dependencies: ", paste(reverse_deps, collapse = ", "))
+
+    # Install/upgrade reverse deps and their dependencies
+    message("\nInstalling/upgrading reverse dependencies and their dependencies...")
+    upgrade_reverse_deps(reverse_deps)
 
     dir.create(check_dir, showWarnings = FALSE, recursive = TRUE)
+    message("\nDownloading source packages...")
     utils::download.packages(reverse_deps, destdir = check_dir, type = "source")
 
     files <- list.files(check_dir, pattern = "\\.tar\\.gz$", full.names = TRUE)
@@ -60,13 +74,43 @@ simple_revdep_check <- function(target_package = NULL,
         stop("No downloaded packages found in ", check_dir)
     }
 
-    # For simplicity, check the first package deterministically
-    result <- check_tarball(files[[1L]], check_args = check_args, build_args = build_args, quiet = quiet)
-    summary <- revdep_status_table(list(result))
+    # Check all packages
+    num_cores <- as.integer(num_cores)
+    if (num_cores < 1) num_cores <- 1L
 
-    saveRDS(list(result), file.path(check_dir, "check_results.rds"))
+    if (num_cores == 1) {
+        message("\n=== Running R CMD check on ", length(files), " packages (sequential) ===")
+        results <- lapply(seq_along(files), function(i) {
+            f <- files[[i]]
+            pkg_name <- sub("_.*", "", basename(f))
+            message("\n[", i, "/", length(files), "] Checking ", pkg_name, "...")
+            check_tarball(f, check_args = check_args, build_args = build_args, quiet = quiet)
+        })
+    } else {
+        message("\n=== Running R CMD check on ", length(files), " packages (parallel, ", num_cores, " cores) ===")
+        cl <- parallel::makeCluster(num_cores)
+        on.exit(parallel::stopCluster(cl), add = TRUE)
 
-    list(results = result, summary = summary, check_dir = check_dir)
+        # Export necessary objects to cluster
+        parallel::clusterExport(cl, c("check_tarball", "check_args", "build_args", "quiet"),
+            envir = environment()
+        )
+
+        results <- parallel::parLapply(cl, seq_along(files), function(i) {
+            f <- files[[i]]
+            check_tarball(f, check_args = check_args, build_args = build_args, quiet = quiet)
+        })
+    }
+    names(results) <- vapply(results, function(r) r$package, character(1L))
+    summary <- revdep_status_table(results)
+
+    message("\n=== Summary ===")
+    print(summary)
+
+    saveRDS(results, file.path(check_dir, "check_results.rds"))
+    message("\nResults saved to: ", file.path(check_dir, "check_results.rds"))
+
+    list(results = results, summary = summary, check_dir = check_dir)
 }
 get_reverse_dependencies <- function(target_package = NULL) {
     if (is.null(target_package)) {
@@ -87,7 +131,8 @@ get_reverse_dependencies <- function(target_package = NULL) {
     }
 
     # Query CRAN metadata for reverse dependencies
-    rev <- tools::package_dependencies(packages = pkg, reverse = TRUE)
+    # Get all types: Depends, Imports, Suggests, LinkingTo
+    rev <- tools::package_dependencies(packages = pkg, reverse = c("Depends", "Imports", "Suggests", "LinkingTo"))
     unique(unname(rev[[pkg]] %||% character()))
 }
 
