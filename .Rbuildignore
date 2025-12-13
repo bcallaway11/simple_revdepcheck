@@ -1,0 +1,13 @@
+^\.Rproj.user$
+^\.Rhistory$
+^\.RData$
+^\.DS_Store$
+^\.git$
+^\.gitignore$
+^README\.md$
+^\.Rbuildignore$
+^revdep_manual$
+^\.vscode$
+^\.simple_revdep$
+^tests/testthat/\.simple_revdep$
+^README\.qmd$
