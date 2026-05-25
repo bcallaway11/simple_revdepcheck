@@ -1,7 +1,7 @@
 # =============================================================================
-# Title: Simple Reverse Dependency Check
-# Description: Lightweight reverse dependency checking using local package
-#   library to avoid re-downloading all transitive dependencies from scratch.
+# Title: revdeplite — Lightweight Reverse Dependency Check
+# Description: Core implementation: revdeplite(), check_source(), and helpers
+#   for discovering, cloning, and summarising reverse dependency checks.
 # Author: Brant Callaway
 # Last update: 2026-05-25
 # Date created: 2026-05-25
@@ -50,7 +50,8 @@ check_source <- function(path, source_type, check_args, build_args, quiet) {
             args      = check_args,
             build_args = build_args,
             quiet     = quiet,
-            env       = c("_R_CHECK_FORCE_SUGGESTS_" = "false")
+            env       = c("_R_CHECK_FORCE_SUGGESTS_" = "false",
+                          "_R_CHECK_SYSTEM_CLOCK_"   = "false")
         ),
         error = function(e) {
             list(
@@ -178,7 +179,7 @@ print_detailed_results <- function(results) {
 revdeplite <- function(target_package = NULL,
                                 reverse_deps   = NULL,
                                 github_deps    = NULL,
-                                check_dir      = ".simple_revdep",
+                                check_dir      = ".revdeplite",
                                 num_cores      = 1L,
                                 check_args     = c("--no-manual", "--as-cran"),
                                 build_args     = "--no-build-vignettes",
@@ -303,11 +304,11 @@ revdeplite <- function(target_package = NULL,
 #' Load and display previously saved results from an RDS file.
 #'
 #' @param check_dir Directory containing `check_results.rds`, or a direct
-#'   path to an `.rds` file. Defaults to `".simple_revdep"`.
+#'   path to an `.rds` file. Defaults to `".revdeplite"`.
 #'
 #' @return Invisibly returns the list of results.
 #' @export
-print_revdep_results <- function(check_dir = ".simple_revdep") {
+print_revdep_results <- function(check_dir = ".revdeplite") {
     rds_path <- if (grepl("\\.rds$", check_dir, ignore.case = TRUE)) {
         check_dir
     } else {
