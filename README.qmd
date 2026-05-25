@@ -146,8 +146,9 @@ res <- revdeplite(
 
 ## Re-printing saved results
 
-Results are saved to `.revdeplite/check_results.rds` after each run and
-can be re-displayed without re-running the checks:
+Results are saved to `.revdeplite/check_results.rds` and a markdown report
+to `.revdeplite/revdeplite-results.md` after each run. They can be re-displayed
+without re-running the checks:
 
 ```{r eval=FALSE}
 print_revdep_results()

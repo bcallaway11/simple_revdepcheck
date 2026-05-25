@@ -103,8 +103,14 @@ print_detailed_results <- function(results) {
     message("=== Detailed Results by Package ===")
     message(strrep("=", 70))
 
-    for (pkg_name in names(results)) {
-        result <- results[[pkg_name]]
+    # Iterate by index (not name) to handle duplicate package names (CRAN + GitHub).
+    # Show CRAN entries first, then GitHub.
+    sources   <- vapply(results, function(r) r$source %||% "cran", character(1L))
+    idx_order <- c(which(sources == "cran"), which(sources == "github"))
+
+    for (i in idx_order) {
+        result       <- results[[i]]
+        pkg_name     <- result$package
         source_label <- paste0(" [", toupper(result$source %||% "cran"), "]")
 
         message("\n", strrep("-", 70))
@@ -388,14 +394,14 @@ print_revdep_summary <- function(results) {
 
 #' Write a markdown report of reverse dependency check results
 #'
-#' Saves a human-readable `revdep-results.md` to `check_dir` with summary
+#' Saves a human-readable `revdeplite-results.md` to `check_dir` with summary
 #' tables (CRAN and GitHub separately) and per-package details including all
 #' errors, warnings, and notes.
 #'
 #' @param results Named list of `rcmdcheck` results (or crash stubs).
 #' @param summary_df Data frame from [revdep_status_table()]. If `NULL`,
 #'   computed from `results`.
-#' @param check_dir Directory to write `revdep-results.md`. Defaults to
+#' @param check_dir Directory to write `revdeplite-results.md`. Defaults to
 #'   `".revdeplite"`.
 #' @param target_package Optional character; package name for the report header.
 #' @return Invisibly returns the path to the written file.
@@ -418,10 +424,18 @@ write_revdep_report <- function(results, summary_df = NULL,
     cran_df   <- summary_df[summary_df$Source == "cran",   cols, drop = FALSE]
     github_df <- summary_df[summary_df$Source == "github", cols, drop = FALSE]
 
+    # Pad each column to max width for alignment in the raw markdown file.
     md_table <- function(df) {
-        header <- paste("|", paste(cols, collapse = " | "), "|")
-        sep    <- paste("|", paste(rep("---", length(cols)), collapse = " | "), "|")
-        rows   <- apply(df, 1, function(r) paste("|", paste(r, collapse = " | "), "|"))
+        widths <- mapply(
+            function(nm, vals) max(nchar(nm), max(nchar(as.character(vals)), 0L)),
+            cols, as.list(df)
+        )
+        pad    <- function(x, w) formatC(as.character(x), width = -w, flag = "-")
+        header <- paste("|", paste(mapply(pad, cols,          widths), collapse = " | "), "|")
+        sep    <- paste("|", paste(mapply(function(w) strrep("-", w), widths), collapse = " | "), "|")
+        rows   <- apply(df, 1, function(r) {
+            paste("|", paste(mapply(pad, r, widths), collapse = " | "), "|")
+        })
         c(header, sep, rows)
     }
 
@@ -432,15 +446,18 @@ write_revdep_report <- function(results, summary_df = NULL,
         lines <- c(lines, "## GitHub Packages", "", md_table(github_df), "")
     }
 
-    # --- Per-package details --------------------------------------------------
-    lines <- c(lines, "## Details", "")
-    for (pkg_name in names(results)) {
-        result       <- results[[pkg_name]]
+    # --- Per-package details: CRAN first, then GitHub -------------------------
+    # Iterate by index (not name) — duplicate package names (same pkg in both
+    # CRAN and GitHub) would cause results[[name]] to always return the first match.
+    lines   <- c(lines, "## Details", "")
+    sources <- vapply(results, function(r) r$source %||% "cran", character(1L))
+    for (i in c(which(sources == "cran"), which(sources == "github"))) {
+        result       <- results[[i]]
         source_label <- toupper(result$source %||% "cran")
         status       <- revdep_status(result)
 
         lines <- c(lines,
-            paste0("### ", pkg_name, " [", source_label, "] — ", status),
+            paste0("### ", result$package, " [", source_label, "] — ", status),
             ""
         )
 
@@ -470,7 +487,7 @@ write_revdep_report <- function(results, summary_df = NULL,
     }
 
     dir.create(check_dir, showWarnings = FALSE, recursive = TRUE)
-    out_path <- file.path(check_dir, "revdep-results.md")
+    out_path <- file.path(check_dir, "revdeplite-results.md")
     writeLines(lines, out_path)
     message("Report written to: ", out_path)
     invisible(out_path)
