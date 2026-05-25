@@ -5,13 +5,13 @@ Version: 0.3.0
 Authors@R: c(
     person(given = "Brantly", family = "Callaway", role = c("aut", "cre"), email = "brantly.callaway@uga.edu")
     )
-Description: Quickly run reverse dependency checks for a target package with a
-    small dependency graph. Downloads reverse dependencies from CRAN, installs
-    or upgrades their dependencies, runs checks in parallel, and summarizes
-    results. Also supports checking GitHub development versions of packages
-    alongside CRAN versions, using git clone. Designed to be lighter-weight
-    than the 'revdepcheck' workflow when you expect most packages to pass with
-    your new package version.
+Description: A lightweight alternative to the 'revdepcheck' package for running
+    reverse dependency checks. Uses packages already installed in the local
+    library rather than building isolated libraries from scratch, which can be
+    dramatically faster when most dependencies are already present. Installs the
+    local package, upgrades only what is missing or outdated, and runs R CMD
+    check on each reverse dependency. Also supports checking GitHub development
+    versions of packages alongside CRAN releases.
 SystemRequirements: git (for github_deps support in simple_revdep_check())
 License: MIT + file LICENSE
 Encoding: UTF-8
