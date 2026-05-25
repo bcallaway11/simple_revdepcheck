@@ -544,7 +544,7 @@ install_current_package_if_target <- function(target_package) {
 
     if (reinstall) {
         if (requireNamespace("devtools", quietly = TRUE)) {
-            devtools::install(upgrade = "never")
+            devtools::install(upgrade = FALSE)
         } else {
             system2(file.path(R.home("bin"), "R"), c("CMD", "INSTALL", "."),
                     stdout = TRUE, stderr = TRUE)
