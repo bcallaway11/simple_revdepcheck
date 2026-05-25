@@ -260,9 +260,14 @@ revdeplite <- function(target_package = NULL,
     if (num_cores == 1L) {
         message("\n=== Running R CMD check on ", n, " packages (sequential) ===")
         results <- lapply(seq_len(n), function(i) {
-            message("\n[", i, "/", n, "] Checking ", get_pkg_name(sources[[i]]),
+            pkg_name <- get_pkg_name(sources[[i]])
+            message("\n[", i, "/", n, "] Checking ", pkg_name,
                     " (", source_types[[i]], ")...")
-            run_one(i)
+            t0  <- proc.time()
+            res <- run_one(i)
+            elapsed <- round((proc.time() - t0)[["elapsed"]])
+            message("  -> ", revdep_status(res), " [", elapsed, "s]")
+            res
         })
     } else {
         message("\n=== Running R CMD check on ", n, " packages (parallel, ",
