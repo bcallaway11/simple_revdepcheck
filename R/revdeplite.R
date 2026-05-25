@@ -220,6 +220,15 @@ revdeplite <- function(target_package = NULL,
 
     dir.create(check_dir, showWarnings = FALSE, recursive = TRUE)
 
+    # Remove stale tarballs from previous runs so re-runs don't check both old
+    # and new versions of the same package. GitHub clones are kept and updated
+    # via git pull instead of re-cloning from scratch.
+    old_tarballs <- list.files(check_dir, pattern = "\\.tar\\.gz$", full.names = TRUE)
+    if (length(old_tarballs) > 0) {
+        message("Removing ", length(old_tarballs), " stale tarball(s) from previous run...")
+        file.remove(old_tarballs)
+    }
+
     cran_paths <- character(0)
     if (length(reverse_deps) > 0) {
         message("Found ", length(reverse_deps), " CRAN reverse dependencies: ",
