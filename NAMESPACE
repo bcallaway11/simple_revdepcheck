@@ -2,4 +2,4 @@
 
 export(print_revdep_results)
 export(revdep_status_table)
-export(simple_revdep_check)
+export(revdeplite)

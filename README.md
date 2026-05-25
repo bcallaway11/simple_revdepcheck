@@ -13,7 +13,7 @@ releases.
 
 ``` r
 # install.packages("pak")
-pak::pak("bcallaway11/simple_revdepcheck")
+pak::pak("bcallaway11/revdeplite")
 ```
 
 ## Basic usage: CRAN reverse dependencies only
@@ -23,10 +23,10 @@ function auto-detects the package name from `DESCRIPTION`, installs the
 local version, discovers all CRAN reverse dependencies, and checks them.
 
 ``` r
-library(simpleRevdepcheck)
+library(revdeplite)
 
 # Run from the package root (e.g., ~/Dropbox/BMisc)
-res <- simple_revdep_check(num_cores = 4)
+res <- revdeplite(num_cores = 4)
 res$summary
 ```
 
@@ -39,7 +39,7 @@ packages. The summary `Source` column distinguishes `"cran"` from
 `"github"` results.
 
 ``` r
-res <- simple_revdep_check(
+res <- revdeplite(
   github_deps = c(
     "bcallaway11/did",
     "bcallaway11/csabounds",
@@ -77,9 +77,9 @@ dependency.
 
 ``` r
 setwd("~/Dropbox/BMisc")
-library(simpleRevdepcheck)
+library(revdeplite)
 
-res_cran <- simple_revdep_check(num_cores = 4)
+res_cran <- revdeplite(num_cores = 4)
 res_cran$summary
 #>       Package Source Errors Warnings Notes Status
 #> 1         did   cran      0        1     1   WARN
@@ -105,7 +105,7 @@ the new snake_case function names. Adding `github_deps` checks those
 development versions alongside the CRAN releases.
 
 ``` r
-res_both <- simple_revdep_check(
+res_both <- revdeplite(
   github_deps = c(
     "bcallaway11/did",
     "bcallaway11/csabounds",
@@ -136,7 +136,7 @@ already addressed upstream.
 
 ``` r
 # Only check two packages instead of all reverse dependencies
-res <- simple_revdep_check(
+res <- revdeplite(
   reverse_deps = c("did", "ptetools"),
   num_cores = 2
 )

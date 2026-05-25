@@ -144,7 +144,7 @@ print_detailed_results <- function(results) {
 
 # --- Exported functions ------------------------------------------------------
 
-#' Run a simple reverse dependency check
+#' Run a lightweight reverse dependency check
 #'
 #' Installs the local package (from the current directory) to ensure the
 #' latest version is used, discovers CRAN reverse dependencies, optionally
@@ -175,7 +175,7 @@ print_detailed_results <- function(results) {
 #'   output), `summary` (data frame with columns `Package`, `Source`,
 #'   `Errors`, `Warnings`, `Notes`, `Status`), and `check_dir`.
 #' @export
-simple_revdep_check <- function(target_package = NULL,
+revdeplite <- function(target_package = NULL,
                                 reverse_deps   = NULL,
                                 github_deps    = NULL,
                                 check_dir      = ".simple_revdep",
