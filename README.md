@@ -60,6 +60,78 @@ This is useful when submitting to CRAN: you can demonstrate to reviewers
 that both the current CRAN versions and the updated GitHub versions of
 reverse dependencies pass cleanly.
 
+## Worked example: preparing BMisc for a breaking release
+
+The `BMisc` package is removing a set of deprecated legacy function
+names (e.g., `makeBalancedPanel`, `rhs.vars`) in version 1.5.0. Before
+submitting to CRAN, the goal is to confirm that (1) the current CRAN
+versions of reverse dependencies only produce deprecation *warnings* —
+not errors — and (2) the updated GitHub versions of those packages pass
+cleanly.
+
+**Step 1: baseline check against CRAN versions**
+
+Run from the `BMisc` root. The function installs the local development
+version of BMisc, then downloads and checks every CRAN reverse
+dependency.
+
+``` r
+setwd("~/Dropbox/BMisc")
+library(simpleRevdepcheck)
+
+res_cran <- simple_revdep_check(num_cores = 4)
+res_cran$summary
+#>       Package Source Errors Warnings Notes Status
+#> 1         did   cran      0        1     1   WARN
+#> 2   csabounds   cran      0        1     0   WARN
+#> 3       DRDID   cran      0        1     0   WARN
+#> 4    ptetools   cran      0        0     1   NOTE
+#> 5         qte   cran      0        1     0   WARN
+#> 6    contdid   cran      0        0     1   NOTE
+#> 7    fastdid   cran      0        0     0   PASS
+#> 8  triplediff   cran      0        0     0   PASS
+#> 9        cdid   cran      0        0     0   PASS
+```
+
+The warnings are the expected deprecation warnings from calling the old
+function names (`BMisc::rhs.vars()`, etc.). No errors means no package
+*breaks* with BMisc 1.5.0 — the deprecated functions are still present
+in this release.
+
+**Step 2: confirm GitHub fixes pass cleanly**
+
+Several reverse dependencies have already been updated on GitHub to use
+the new snake_case function names. Adding `github_deps` checks those
+development versions alongside the CRAN releases.
+
+``` r
+res_both <- simple_revdep_check(
+  github_deps = c(
+    "bcallaway11/did",
+    "bcallaway11/csabounds",
+    "pedrohcgs/DRDID",
+    "bcallaway11/ptetools"
+  ),
+  num_cores = 4
+)
+res_both$summary
+#>       Package  Source Errors Warnings Notes Status
+#> 1         did    cran      0        1     1   WARN
+#> 2         did  github      0        0     1   NOTE
+#> 3   csabounds    cran      0        1     0   WARN
+#> 4   csabounds  github      0        0     0   PASS
+#> 5       DRDID    cran      0        1     0   WARN
+#> 6       DRDID  github      0        0     0   PASS
+#> 7    ptetools    cran      0        0     1   NOTE
+#> 8    ptetools  github      0        0     1   NOTE
+#> ...
+```
+
+The `github` rows show that the updated packages pass without
+deprecation warnings. This output can be shared with CRAN reviewers to
+demonstrate that the breakage from removing the deprecated names is
+already addressed upstream.
+
 ## Checking a specific subset of reverse dependencies
 
 ``` r
