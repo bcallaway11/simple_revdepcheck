@@ -7,11 +7,12 @@
 revdep_status_table(results)
 }
 \arguments{
-\item{results}{List of objects returned by \code{rcmdcheck()} (or crash stubs).}
+\item{results}{Named list of objects returned by \code{rcmdcheck()} (or crash
+stubs).}
 }
 \value{
-Data frame with columns \code{Package}, \code{Errors}, \code{Warnings}, \code{Notes},
-and \code{Status}.
+Data frame with columns \code{Package}, \code{Source}, \code{Errors}, \code{Warnings},
+\code{Notes}, and \code{Status}.
 }
 \description{
 Summarize reverse dependency check results

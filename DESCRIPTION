@@ -1,15 +1,18 @@
 Package: simpleRevdepcheck
 Type: Package
 Title: Lightweight Reverse Dependency Checks
-Version: 0.1.0
+Version: 0.2.0
 Authors@R: c(
     person(given = "Brantly", family = "Callaway", role = c("aut", "cre"), email = "brantly.callaway@uga.edu")
     )
 Description: Quickly run reverse dependency checks for a target package with a
     small dependency graph. Downloads reverse dependencies from CRAN, installs
     or upgrades their dependencies, runs checks in parallel, and summarizes
-    results. Designed to be lighter-weight than the 'revdepcheck' workflow
-    when you expect most packages to pass with your new package version.
+    results. Also supports checking GitHub development versions of packages
+    alongside CRAN versions, using git clone. Designed to be lighter-weight
+    than the 'revdepcheck' workflow when you expect most packages to pass with
+    your new package version.
+SystemRequirements: git (for github_deps support in simple_revdep_check())
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
@@ -17,4 +20,4 @@ Imports: rcmdcheck, utils, tools
 Suggests: pak, devtools, testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2
+Config/roxygen2/version: 8.0.0

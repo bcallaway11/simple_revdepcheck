@@ -7,12 +7,12 @@
 print_revdep_results(check_dir = ".simple_revdep")
 }
 \arguments{
-\item{check_dir}{Directory containing the saved results, or direct path to check_results.rds file.
-Defaults to ".simple_revdep".}
+\item{check_dir}{Directory containing \code{check_results.rds}, or a direct
+path to an \code{.rds} file. Defaults to \code{".simple_revdep"}.}
 }
 \value{
 Invisibly returns the list of results.
 }
 \description{
-Load and display previously saved reverse dependency check results from an RDS file.
+Load and display previously saved results from an RDS file.
 }

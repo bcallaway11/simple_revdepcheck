@@ -7,6 +7,7 @@
 simple_revdep_check(
   target_package = NULL,
   reverse_deps = NULL,
+  github_deps = NULL,
   check_dir = ".simple_revdep",
   num_cores = 1L,
   check_args = c("--no-manual", "--as-cran"),
@@ -15,18 +16,26 @@ simple_revdep_check(
 )
 }
 \arguments{
-\item{target_package}{Optional character; package whose reverse dependencies to query
-(e.g., "did"). Defaults to the package in the current directory.
-If the current directory is that package, it is (re)installed
-locally first to avoid using an outdated version.}
+\item{target_package}{Optional character; package whose reverse
+dependencies to query (e.g., \code{"BMisc"}). Defaults to the package in
+the current directory. If the current directory is that package, it is
+(re)installed locally first so the latest version is used.}
 
 \item{reverse_deps}{Optional character vector of CRAN package names to
-check. When \code{NULL}, reverse dependencies are discovered automatically via CRAN metadata.}
+check. When \code{NULL}, reverse dependencies are discovered automatically
+via CRAN metadata.}
 
-\item{check_dir}{Directory to store downloaded tarballs and saved results.}
+\item{github_deps}{Optional character vector of GitHub repositories in
+\code{"user/repo"} format (e.g., \code{c("bcallaway11/did", "pedrohcgs/DRDID")}).
+Each repo is cloned (or updated) with \verb{git clone --depth=1} and checked
+alongside the CRAN packages. Requires \code{git} to be available on \code{PATH}.
+Results are labelled \code{"github"} in the summary \code{Source} column.}
 
-\item{num_cores}{Number of cores to use for parallel checking. Defaults to 1 (sequential).
-Works on both Linux and Windows.}
+\item{check_dir}{Directory to store downloaded tarballs, cloned repos,
+and saved results.}
+
+\item{num_cores}{Number of cores for parallel checking. Defaults to 1
+(sequential). Parallel mode works on Linux and Windows.}
 
 \item{check_args}{Arguments forwarded to \verb{R CMD check}.}
 
@@ -35,13 +44,13 @@ Works on both Linux and Windows.}
 \item{quiet}{Logical; passed to \code{rcmdcheck()}.}
 }
 \value{
-A list with elements \code{results} (raw \code{rcmdcheck} output), \code{summary}
-(data frame), and \code{check_dir}.
+A list with elements \code{results} (named list of raw \code{rcmdcheck}
+output), \code{summary} (data frame with columns \code{Package}, \code{Source},
+\code{Errors}, \code{Warnings}, \code{Notes}, \code{Status}), and \code{check_dir}.
 }
 \description{
-Installs the local package (from the current directory) to ensure the latest
-version is used, discovers CRAN reverse dependencies for a target package,
-optionally filters to a subset, downloads source tarballs, and runs
-\code{rcmdcheck()} on one selected package. Returns raw results and a compact
-summary; results are saved to \code{check_dir}.
+Installs the local package (from the current directory) to ensure the
+latest version is used, discovers CRAN reverse dependencies, optionally
+adds GitHub packages, downloads/clones sources, runs \code{rcmdcheck()} on
+each, and returns a compact summary. Results are saved to \code{check_dir}.
 }
