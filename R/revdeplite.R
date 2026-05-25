@@ -424,7 +424,7 @@ write_revdep_report <- function(results, summary_df = NULL,
     lines <- c(
         paste0("# Reverse Dependency Check: ", pkg_label),
         "",
-        paste0("**Date:** ", Sys.Date()),
+        paste0("**Date:** ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z")),
         ""
     )
 
