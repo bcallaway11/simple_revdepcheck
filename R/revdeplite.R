@@ -168,20 +168,24 @@ print_detailed_results <- function(results) {
 #'   and saved results.
 #' @param num_cores Number of cores for parallel checking. Defaults to 1
 #'   (sequential). Parallel mode works on Linux and Windows.
-#' @param check_args Arguments forwarded to `R CMD check`.
+#' @param check_args Arguments forwarded to `R CMD check`. Defaults to
+#'   `"--no-manual"`. Note: `--as-cran` is intentionally omitted to avoid
+#'   false-positive NOTEs (version mismatch, build timestamp) that are
+#'   irrelevant for reverse dependency checking.
 #' @param build_args Arguments forwarded to `R CMD build`.
 #' @param quiet Logical; passed to `rcmdcheck()`.
 #'
 #' @return A list with elements `results` (named list of raw `rcmdcheck`
 #'   output), `summary` (data frame with columns `Package`, `Source`,
-#'   `Errors`, `Warnings`, `Notes`, `Status`), and `check_dir`.
+#'   `Errors`, `Warnings`, `Notes`, `Status`), and `check_dir`. A markdown
+#'   report is written to `check_dir/revdep-results.md`.
 #' @export
 revdeplite <- function(target_package = NULL,
                                 reverse_deps   = NULL,
                                 github_deps    = NULL,
                                 check_dir      = ".revdeplite",
                                 num_cores      = 1L,
-                                check_args     = c("--no-manual", "--as-cran"),
+                                check_args     = "--no-manual",
                                 build_args     = "--no-build-vignettes",
                                 quiet          = TRUE) {
     # --- Resolve target package ----------------------------------------------
@@ -195,7 +199,7 @@ revdeplite <- function(target_package = NULL,
             stop("DESCRIPTION is missing a Package field")
     }
 
-    message("\n=== Simple Reverse Dependency Check ===")
+    message("\n=== revdeplite: Reverse Dependency Check ===")
     message("Target package: ", target_package)
 
     # --- Install local package -----------------------------------------------
@@ -288,12 +292,14 @@ revdeplite <- function(target_package = NULL,
 
     # --- Report --------------------------------------------------------------
     summary_df <- revdep_status_table(results)
-    message("\n=== Summary Table ===")
-    print(summary_df)
+    print_revdep_summary(summary_df)
     print_detailed_results(results)
 
     saveRDS(results, file.path(check_dir, "check_results.rds"))
     message("\nResults saved to: ", file.path(check_dir, "check_results.rds"))
+    write_revdep_report(results, summary_df,
+                        check_dir      = check_dir,
+                        target_package = target_package)
 
     list(results = results, summary = summary_df, check_dir = check_dir)
 }
@@ -320,8 +326,7 @@ print_revdep_results <- function(check_dir = ".revdeplite") {
     results <- readRDS(rds_path)
 
     summary_df <- revdep_status_table(results)
-    message("\n=== Summary Table ===")
-    print(summary_df)
+    print_revdep_summary(summary_df)
     print_detailed_results(results)
 
     invisible(results)
@@ -348,6 +353,127 @@ revdep_status_table <- function(results) {
         Status   = vapply(results, revdep_status, character(1L)),
         stringsAsFactors = FALSE
     )
+}
+
+
+#' Print a split summary of reverse dependency check results
+#'
+#' Prints one table for CRAN packages and one for GitHub packages, depending
+#' on which source types are present. Accepts either the named results list or
+#' the summary data frame returned by [revdep_status_table()].
+#'
+#' @param results Named list of `rcmdcheck` results, or a data frame from
+#'   [revdep_status_table()].
+#' @return Invisibly returns the summary data frame.
+#' @export
+print_revdep_summary <- function(results) {
+    df   <- if (is.data.frame(results)) results else revdep_status_table(results)
+    cols <- c("Package", "Errors", "Warnings", "Notes", "Status")
+
+    cran_df   <- df[df$Source == "cran",   cols, drop = FALSE]
+    github_df <- df[df$Source == "github", cols, drop = FALSE]
+
+    if (nrow(cran_df) > 0) {
+        message("\n=== CRAN Packages ===")
+        print(cran_df, row.names = FALSE)
+    }
+    if (nrow(github_df) > 0) {
+        message("\n=== GitHub Packages ===")
+        print(github_df, row.names = FALSE)
+    }
+
+    invisible(df)
+}
+
+
+#' Write a markdown report of reverse dependency check results
+#'
+#' Saves a human-readable `revdep-results.md` to `check_dir` with summary
+#' tables (CRAN and GitHub separately) and per-package details including all
+#' errors, warnings, and notes.
+#'
+#' @param results Named list of `rcmdcheck` results (or crash stubs).
+#' @param summary_df Data frame from [revdep_status_table()]. If `NULL`,
+#'   computed from `results`.
+#' @param check_dir Directory to write `revdep-results.md`. Defaults to
+#'   `".revdeplite"`.
+#' @param target_package Optional character; package name for the report header.
+#' @return Invisibly returns the path to the written file.
+#' @export
+write_revdep_report <- function(results, summary_df = NULL,
+                                check_dir      = ".revdeplite",
+                                target_package = NULL) {
+    if (is.null(summary_df)) summary_df <- revdep_status_table(results)
+
+    pkg_label <- target_package %||% "unknown"
+    lines <- c(
+        paste0("# Reverse Dependency Check: ", pkg_label),
+        "",
+        paste0("**Date:** ", Sys.Date()),
+        ""
+    )
+
+    # --- Summary tables -------------------------------------------------------
+    cols      <- c("Package", "Errors", "Warnings", "Notes", "Status")
+    cran_df   <- summary_df[summary_df$Source == "cran",   cols, drop = FALSE]
+    github_df <- summary_df[summary_df$Source == "github", cols, drop = FALSE]
+
+    md_table <- function(df) {
+        header <- paste("|", paste(cols, collapse = " | "), "|")
+        sep    <- paste("|", paste(rep("---", length(cols)), collapse = " | "), "|")
+        rows   <- apply(df, 1, function(r) paste("|", paste(r, collapse = " | "), "|"))
+        c(header, sep, rows)
+    }
+
+    if (nrow(cran_df) > 0) {
+        lines <- c(lines, "## CRAN Packages", "", md_table(cran_df), "")
+    }
+    if (nrow(github_df) > 0) {
+        lines <- c(lines, "## GitHub Packages", "", md_table(github_df), "")
+    }
+
+    # --- Per-package details --------------------------------------------------
+    lines <- c(lines, "## Details", "")
+    for (pkg_name in names(results)) {
+        result       <- results[[pkg_name]]
+        source_label <- toupper(result$source %||% "cran")
+        status       <- revdep_status(result)
+
+        lines <- c(lines,
+            paste0("### ", pkg_name, " [", source_label, "] — ", status),
+            ""
+        )
+
+        if (isTRUE(result$crashed)) {
+            lines <- c(lines, "**CHECK CRASHED**", "",
+                       paste0("- ", result$errors), "")
+        } else {
+            if (length(result$errors) > 0) {
+                lines <- c(lines, "#### Errors", "",
+                           paste0("- ", result$errors), "")
+            }
+            if (length(result$warnings) > 0) {
+                lines <- c(lines, "#### Warnings", "",
+                           paste0("- ", result$warnings), "")
+            }
+            if (length(result$notes) > 0) {
+                lines <- c(lines, "#### Notes", "",
+                           paste0("- ", result$notes), "")
+            }
+            if (length(result$errors) == 0 &&
+                length(result$warnings) == 0 &&
+                length(result$notes) == 0) {
+                lines <- c(lines, "No issues.", "")
+            }
+        }
+        lines <- c(lines, "---", "")
+    }
+
+    dir.create(check_dir, showWarnings = FALSE, recursive = TRUE)
+    out_path <- file.path(check_dir, "revdep-results.md")
+    writeLines(lines, out_path)
+    message("Report written to: ", out_path)
+    invisible(out_path)
 }
 
 
